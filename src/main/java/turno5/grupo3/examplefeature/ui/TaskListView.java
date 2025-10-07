@@ -54,10 +54,7 @@ class TaskListView extends Main {
         this.taskService = taskService;
         this.pdfExportService = pdfExportService; // Atribuição do novo serviço
 
-        // Inicializa o Anchor, mas mantém-no escondido
-        downloadLink.getElement().setAttribute("download", true);
-        downloadLink.getElement().getStyle().set("display", "none");
-        add(downloadLink); // Adiciona ao layout principal para funcionar
+
 
         description = new TextField();
         description.setPlaceholder("What do you want to do?");
