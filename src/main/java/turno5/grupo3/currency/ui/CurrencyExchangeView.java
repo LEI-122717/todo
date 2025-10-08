@@ -27,7 +27,7 @@ public class CurrencyExchangeView extends Div {
 
     private final CurrencyService currencyService;
 
-    // Usamos um Set para evitar duplicatas no grid
+    // Set para evitar duplicações no grid
     private final Set<ExchangeResult> results = new LinkedHashSet<>();
     private final Grid<ExchangeResult> resultsGrid = new Grid<>(ExchangeResult.class);
 
@@ -252,7 +252,7 @@ public class CurrencyExchangeView extends Div {
                 ExchangeResult newResult = new ExchangeResult(from, to, amountValue, result);
                 boolean isAdded = results.add(newResult); // Adiciona ao Set
                 if (isAdded) {
-                    resultsGrid.setItems(results); // Atualiza os itens do grid
+                    resultsGrid.setItems(results); // Atualizar os itens do grid
                 } else {
                     Notification.show("Já existe um resultado idêntico na tabela.", 3000, Notification.Position.TOP_CENTER);
                 }
@@ -275,10 +275,9 @@ public class CurrencyExchangeView extends Div {
         formLayout.setDefaultVerticalComponentAlignment(FlexComponent.Alignment.END);
         formLayout.setSpacing(true);
 
-        // ...
 
         // Configuração do grid
-        resultsGrid.setColumns("from", "to", "amount", "result"); // Define colunas usando ExchangeResult
+        resultsGrid.setColumns("from", "to", "amount", "result");
         resultsGrid.getColumnByKey("from").setHeader("De").setAutoWidth(true);
         resultsGrid.getColumnByKey("to").setHeader("Para").setAutoWidth(true);
         resultsGrid.getColumnByKey("amount").setHeader("Valor").setAutoWidth(true);
@@ -286,7 +285,7 @@ public class CurrencyExchangeView extends Div {
         resultsGrid.setWidth("500px");
         resultsGrid.setHeight("300px");
 
-        // Centralizar a tabela com um layout dedicado
+        // Centralizar a tabela
         Div gridWrapper = new Div(resultsGrid);
         gridWrapper.getStyle().set("margin", "0 auto").set("padding-top", "20px");
 
@@ -299,7 +298,7 @@ public class CurrencyExchangeView extends Div {
         add(mainLayout);
     }
 
-    // Classe interna para representar os resultados únicos
+    // Classe para representar os resultados únicos
     public static class ExchangeResult {
         private final String from;
         private final String to;
@@ -329,7 +328,7 @@ public class CurrencyExchangeView extends Div {
             return result;
         }
 
-        // equals e hashCode são necessários para evitar duplicatas
+        // equals e hashCode para evitar duplicações
         @Override
         public boolean equals(Object o) {
             if (this == o) return true;
