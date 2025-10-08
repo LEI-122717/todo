@@ -1,22 +1,25 @@
 package turno5.grupo3.examplefeature.ui;
 
 import com.vaadin.flow.component.icon.Icon;
-import com.vaadin.flow.server.StreamResource;
-import turno5.grupo3.base.ui.component.ViewToolbar;
-import turno5.grupo3.examplefeature.Task;
-import turno5.grupo3.examplefeature.TaskService;
+import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
-import com.vaadin.flow.component.datepicker.DatePicker;
 import com.vaadin.flow.component.grid.Grid;
+import com.vaadin.flow.component.html.Anchor;
 import com.vaadin.flow.component.html.Main;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.notification.NotificationVariant;
 import com.vaadin.flow.component.textfield.TextField;
+import com.vaadin.flow.component.datepicker.DatePicker;
 import com.vaadin.flow.router.Menu;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
+import com.vaadin.flow.server.StreamResource;
 import com.vaadin.flow.theme.lumo.LumoUtility;
+import turno5.grupo3.base.ui.component.ViewToolbar;
+import turno5.grupo3.examplefeature.Task;
+import turno5.grupo3.examplefeature.TaskService;
+import turno5.grupo3.examplefeature.service.PdfExportService;
 
 import java.io.ByteArrayInputStream;
 import java.time.ZoneId;
@@ -25,36 +28,24 @@ import java.time.format.FormatStyle;
 import java.util.List;
 import java.util.Optional;
 
-
-import com.vaadin.flow.component.icon.VaadinIcon;
-import com.vaadin.flow.component.html.Anchor;
-
-import turno5.grupo3.examplefeature.service.PdfExportService; // NOVO
-
-
 import static com.vaadin.flow.spring.data.VaadinSpringDataHelpers.toSpringPageRequest;
 
 @Route("")
 @PageTitle("Task List")
 @Menu(order = 0, icon = "vaadin:clipboard-check", title = "Task List")
-class TaskListView extends Main {
+public class TaskListView extends Main {
 
     private final TaskService taskService;
-    private final PdfExportService pdfExportService; // NOVO CAMPO
+    private final PdfExportService pdfExportService;
 
     final TextField description;
     final DatePicker dueDate;
     final Button createBtn;
     final Grid<Task> taskGrid;
 
-    // NOVO: Anchor oculto para acionar o download (truque Vaadin)
-    private final Anchor downloadLink = new Anchor();
-
-    TaskListView(TaskService taskService, PdfExportService pdfExportService) {
+    public TaskListView(TaskService taskService, PdfExportService pdfExportService) {
         this.taskService = taskService;
-        this.pdfExportService = pdfExportService; // Atribuição do novo serviço
-
-
+        this.pdfExportService = pdfExportService;
 
         description = new TextField();
         description.setPlaceholder("What do you want to do?");
@@ -69,10 +60,13 @@ class TaskListView extends Main {
         createBtn = new Button("Create", event -> createTask());
         createBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
 
-        var dateTimeFormatter = DateTimeFormatter.ofLocalizedDateTime(FormatStyle.MEDIUM).withLocale(getLocale())
+        DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofLocalizedDateTime(FormatStyle.MEDIUM)
+                .withLocale(getLocale())
                 .withZone(ZoneId.systemDefault());
-        var dateFormatter = DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM).withLocale(getLocale());
+        DateTimeFormatter dateFormatter = DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM)
+                .withLocale(getLocale());
 
+        // Configuração do Grid
         taskGrid = new Grid<>();
         taskGrid.setItems(query -> taskService.list(toSpringPageRequest(query)).stream());
         taskGrid.addColumn(Task::getDescription).setHeader("Description");
@@ -81,12 +75,19 @@ class TaskListView extends Main {
         taskGrid.addColumn(task -> dateTimeFormatter.format(task.getCreationDate())).setHeader("Creation Date");
         taskGrid.setSizeFull();
 
-        setSizeFull();
-        addClassNames(LumoUtility.BoxSizing.BORDER, LumoUtility.Display.FLEX, LumoUtility.FlexDirection.COLUMN,
-                LumoUtility.Padding.MEDIUM, LumoUtility.Gap.SMALL);
+        // Navegação ao clicar numa linha
+        taskGrid.addItemClickListener(event -> {
+            Task clickedTask = event.getItem();
+            getUI().ifPresent(ui -> ui.navigate("tarefa/" + clickedTask.getId()));
+        });
 
-        add(new ViewToolbar("Task List", ViewToolbar.group(description, dueDate, createBtn),
-                createPdfExportAnchor() // ADICIONA O BOTÃO DE EXPORTAÇÃO
+        setSizeFull();
+        addClassNames(LumoUtility.BoxSizing.BORDER, LumoUtility.Display.FLEX,
+                LumoUtility.FlexDirection.COLUMN, LumoUtility.Padding.MEDIUM, LumoUtility.Gap.SMALL);
+
+        add(new ViewToolbar("Task List",
+                ViewToolbar.group(description, dueDate, createBtn),
+                createPdfExportAnchor()
         ));
         add(taskGrid);
     }
@@ -100,42 +101,25 @@ class TaskListView extends Main {
                 .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
     }
 
-    // NOVO MÉTODO (Substitui o anterior createPdfExportAnchor)
     @SuppressWarnings("deprecation")
     private Anchor createPdfExportAnchor() {
-
-        // 1. Crie o Anchor (Sem o recurso no construtor para evitar o warning)
         Anchor downloadAnchor = new Anchor();
-
-        @SuppressWarnings("deprecation")
-        // 2. Crie o StreamResource (A lógica de geração de PDF é a mesma)
         StreamResource resource = new StreamResource("lista_de_tarefas.pdf", () -> {
-            // Obtém todos os dados do serviço
-            List<Task> allTasks = taskService.findAll(); // buscar aqui
+            List<Task> allTasks = taskService.findAll();
             try {
-                // Usa o PdfExportService para gerar o PDF
                 byte[] pdfBytes = pdfExportService.generateTasksPdf(allTasks);
                 return new ByteArrayInputStream(pdfBytes);
             } catch (Exception ex) {
-                // Trata erros
                 Notification.show("Erro ao gerar PDF: " + ex.getMessage(), 5000, Notification.Position.BOTTOM_END)
                         .addThemeVariants(NotificationVariant.LUMO_ERROR);
                 return new ByteArrayInputStream(new byte[0]);
             }
         });
 
-        // 3. Defina as propriedades do download no Anchor
-
-        // Define o recurso como o destino do link (o que deve ser descarregado)
         downloadAnchor.setHref(resource);
-
-        // CRUCIAL: Força o download (em vez de tentar abrir no browser)
         downloadAnchor.getElement().setAttribute("download", true);
-
-        // Opcional: Abre numa nova janela
         downloadAnchor.setTarget("_blank");
 
-        // 4. Cria o componente visual (o botão) e insere-o no Anchor
         Button pdfButton = new Button("Exportar para PDF", new Icon(VaadinIcon.FILE_TEXT));
         pdfButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
 
@@ -144,7 +128,4 @@ class TaskListView extends Main {
 
         return downloadAnchor;
     }
-
 }
-
-
