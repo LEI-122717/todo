@@ -33,4 +33,9 @@ public class TaskService {
         return taskRepository.findAllBy(pageable).toList();
     }
 
+    // NOVO MÉTODO: Retorna todas as tarefas
+    public List<Task> findAll() {
+        return taskRepository.findAll();
+    }
+
 }

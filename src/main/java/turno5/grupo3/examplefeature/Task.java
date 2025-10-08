@@ -27,6 +27,10 @@ public class Task {
     @Nullable
     private LocalDate dueDate;
 
+    // NOVO CAMPO: Estado da tarefa
+    @Column(name = "is_done", nullable = false)
+    private boolean done = false; // Valor padrão: não concluída
+
     protected Task() { // To keep Hibernate happy
     }
 
@@ -60,6 +64,16 @@ public class Task {
 
     public void setDueDate(@Nullable LocalDate dueDate) {
         this.dueDate = dueDate;
+    }
+
+    // NOVO MÉTODO (Getter)
+    public boolean isDone() {
+        return done;
+    }
+
+    // NOVO MÉTODO (Setter)
+    public void setDone(boolean done) {
+        this.done = done;
     }
 
     @Override
