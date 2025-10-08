@@ -8,7 +8,7 @@ public class CurrencyService {
 
     private final RestTemplate restTemplate;
 
-    private static final String ACCESS_KEY = "e073ae8fb306bae23359ae19f80c637e"; // Sua chave de acesso
+    private static final String ACCESS_KEY = "e073ae8fb306bae23359ae19f80c637e"; // Chave de acesso
     private static final String API_URL = "https://api.exchangerate.host/convert";
 
     public CurrencyService() {
