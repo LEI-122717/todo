@@ -9,6 +9,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class TaskService {
@@ -30,6 +31,18 @@ public class TaskService {
         var task = new Task(description, Instant.now());
         task.setDueDate(dueDate);
         taskRepository.saveAndFlush(task);
+    }
+
+    @Transactional
+    public void setDone(Long id, boolean done) {
+        Optional<Task> opt = taskRepository.findById(id);
+        if (opt.isPresent()) {
+            Task task = opt.get();
+            task.setDone(done);
+            taskRepository.saveAndFlush(task);
+        } else {
+            throw new IllegalArgumentException("Task not found: " + id);
+        }
     }
 
     @Transactional(readOnly = true)

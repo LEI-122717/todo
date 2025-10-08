@@ -1,19 +1,21 @@
 package turno5.grupo3.examplefeature.ui;
 
 import com.vaadin.flow.component.UI;
+import com.vaadin.flow.component.checkbox.Checkbox;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.datepicker.DatePicker;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.html.Anchor;
-import com.vaadin.flow.component.html.Image;
+import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.html.Main;
+import com.vaadin.flow.component.html.H3;
+import com.vaadin.flow.component.icon.Icon;
+import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.notification.NotificationVariant;
 import com.vaadin.flow.component.textfield.TextArea;
 import com.vaadin.flow.component.textfield.TextField;
-import com.vaadin.flow.component.icon.Icon;
-import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.router.Menu;
 import com.vaadin.flow.router.PageTitle;
@@ -67,15 +69,53 @@ public class TaskListView extends Main {
         var dateTimeFormatter = DateTimeFormatter.ofLocalizedDateTime(FormatStyle.MEDIUM).withZone(ZoneId.systemDefault());
         var dateFormatter = DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM).withZone(ZoneId.systemDefault());
 
-        taskGrid = new Grid<>();
-        taskGrid.setItems(query -> taskService.list(toSpringPageRequest(query)).stream());
-        taskGrid.addColumn(Task::getDescription).setHeader("Description");
+        taskGrid = new Grid<>(Task.class, false);
+        // Coluna 0: checkbox para done
+        taskGrid.addComponentColumn(task -> {
+            Checkbox cb = new Checkbox(task.isDone());
+            cb.getElement().setProperty("title", task.isDone() ? "Concluído" : "Marcar como concluído");
+            cb.addValueChangeListener(ev -> {
+                boolean newValue = ev.getValue();
+                try {
+                    taskService.setDone(task.getId(), newValue);
+                    // actualiza visualmente a linha — refresh
+                    taskGrid.getDataProvider().refreshItem(task);
+                    Notification.show("Tarefa " + (newValue ? "concluída" : "reaberta"), 2000, Notification.Position.BOTTOM_END)
+                            .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+                } catch (Exception ex) {
+                    // Reverte checkbox no cliente se falhar
+                    cb.setValue(!newValue);
+                    Notification.show("Erro ao atualizar estado: " + ex.getMessage(), 4000, Notification.Position.BOTTOM_END)
+                            .addThemeVariants(NotificationVariant.LUMO_ERROR);
+                }
+            });
+            return cb;
+        }).setHeader("").setAutoWidth(true).setFlexGrow(0);
+
+        // Coluna 1: descrição (com strike-through se done)
+        taskGrid.addComponentColumn(task -> {
+            Span span = new Span(task.getDescription());
+            if (task.isDone()) {
+                span.getStyle().set("text-decoration", "line-through");
+                span.getStyle().set("color", "#777");
+            } else {
+                span.getStyle().set("color", "#111");
+            }
+            return span;
+        }).setHeader("Description").setAutoWidth(true).setFlexGrow(4);
+
+        // Coluna 2: due date
         taskGrid.addColumn(task -> Optional.ofNullable(task.getDueDate()).map(dateFormatter::format).orElse("Never"))
-                .setHeader("Due Date");
-        taskGrid.addColumn(task -> dateTimeFormatter.format(task.getCreationDate())).setHeader("Creation Date");
+                .setHeader("Due Date").setAutoWidth(true).setFlexGrow(2);
+
+        // Coluna 3: creation date
+        taskGrid.addColumn(task -> dateTimeFormatter.format(task.getCreationDate()))
+                .setHeader("Creation Date").setAutoWidth(true).setFlexGrow(2);
+
+        taskGrid.setItems(query -> taskService.list(toSpringPageRequest(query)).stream());
         taskGrid.setSizeFull();
 
-        // Clique numa task para abrir a página de detalhe
+        // Clique numa task (na row) para abrir detalhe (navega para /tarefa/{id})
         taskGrid.addItemClickListener(event -> {
             Task task = event.getItem();
             UI.getCurrent().navigate("tarefa/" + task.getId());
@@ -107,7 +147,7 @@ public class TaskListView extends Main {
         Button submitBtn = new Button("Criar Task", event -> {
             String desc = descField.getValue();
             var due = dueDateField.getValue();
-            if(desc.isEmpty()) {
+            if (desc == null || desc.isBlank()) {
                 Notification.show("Descrição é obrigatória", 3000, Notification.Position.BOTTOM_END)
                         .addThemeVariants(NotificationVariant.LUMO_ERROR);
                 return;
