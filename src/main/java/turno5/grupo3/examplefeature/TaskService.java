@@ -8,6 +8,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class TaskService {
@@ -17,7 +18,10 @@ public class TaskService {
     TaskService(TaskRepository taskRepository) {
         this.taskRepository = taskRepository;
     }
-
+    @Transactional(readOnly = true)
+    public Optional<Task> findById(Long id) {
+        return taskRepository.findById(id);
+    }
     @Transactional
     public void createTask(String description, @Nullable LocalDate dueDate) {
         if ("fail".equals(description)) {
