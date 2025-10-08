@@ -1,16 +1,20 @@
 package turno5.grupo3.examplefeature.ui;
 
-import com.vaadin.flow.component.icon.Icon;
-import com.vaadin.flow.component.icon.VaadinIcon;
+import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
-import com.vaadin.flow.component.grid.Grid;
+import com.vaadin.flow.component.datepicker.DatePicker;
+import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.html.Anchor;
+import com.vaadin.flow.component.html.Image;
 import com.vaadin.flow.component.html.Main;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.notification.NotificationVariant;
+import com.vaadin.flow.component.textfield.TextArea;
 import com.vaadin.flow.component.textfield.TextField;
-import com.vaadin.flow.component.datepicker.DatePicker;
+import com.vaadin.flow.component.icon.Icon;
+import com.vaadin.flow.component.icon.VaadinIcon;
+import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.router.Menu;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
@@ -48,8 +52,8 @@ public class TaskListView extends Main {
         this.pdfExportService = pdfExportService;
 
         description = new TextField();
-        description.setPlaceholder("What do you want to do?");
-        description.setAriaLabel("Task description");
+        description.setPlaceholder("O que queres fazer?");
+        description.setAriaLabel("Descrição da task");
         description.setMaxLength(Task.DESCRIPTION_MAX_LENGTH);
         description.setMinWidth("20em");
 
@@ -57,16 +61,12 @@ public class TaskListView extends Main {
         dueDate.setPlaceholder("Due date");
         dueDate.setAriaLabel("Due date");
 
-        createBtn = new Button("Create", event -> createTask());
+        createBtn = new Button("Create", event -> openCreateTaskDialog());
         createBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
 
-        DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofLocalizedDateTime(FormatStyle.MEDIUM)
-                .withLocale(getLocale())
-                .withZone(ZoneId.systemDefault());
-        DateTimeFormatter dateFormatter = DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM)
-                .withLocale(getLocale());
+        var dateTimeFormatter = DateTimeFormatter.ofLocalizedDateTime(FormatStyle.MEDIUM).withZone(ZoneId.systemDefault());
+        var dateFormatter = DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM).withZone(ZoneId.systemDefault());
 
-        // Configuração do Grid
         taskGrid = new Grid<>();
         taskGrid.setItems(query -> taskService.list(toSpringPageRequest(query)).stream());
         taskGrid.addColumn(Task::getDescription).setHeader("Description");
@@ -75,35 +75,59 @@ public class TaskListView extends Main {
         taskGrid.addColumn(task -> dateTimeFormatter.format(task.getCreationDate())).setHeader("Creation Date");
         taskGrid.setSizeFull();
 
-        // Navegação ao clicar numa linha
+        // Clique numa task para abrir a página de detalhe
         taskGrid.addItemClickListener(event -> {
-            Task clickedTask = event.getItem();
-            getUI().ifPresent(ui -> ui.navigate("tarefa/" + clickedTask.getId()));
+            Task task = event.getItem();
+            UI.getCurrent().navigate("tarefa/" + task.getId());
         });
 
         setSizeFull();
         addClassNames(LumoUtility.BoxSizing.BORDER, LumoUtility.Display.FLEX,
                 LumoUtility.FlexDirection.COLUMN, LumoUtility.Padding.MEDIUM, LumoUtility.Gap.SMALL);
 
-        add(new ViewToolbar("Task List",
-                ViewToolbar.group(description, dueDate, createBtn),
+        // Toolbar com campos de pesquisa/dueDate e botão create
+        add(new ViewToolbar("Task List", ViewToolbar.group(description, dueDate, createBtn),
                 createPdfExportAnchor()
         ));
         add(taskGrid);
     }
 
-    private void createTask() {
-        taskService.createTask(description.getValue(), dueDate.getValue());
-        taskGrid.getDataProvider().refreshAll();
-        description.clear();
-        dueDate.clear();
-        Notification.show("Task added", 3000, Notification.Position.BOTTOM_END)
-                .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+    // Pop-up para criar task
+    private void openCreateTaskDialog() {
+        Dialog dialog = new Dialog();
+        dialog.setCloseOnEsc(true);
+        dialog.setCloseOnOutsideClick(true);
+
+        TextArea descField = new TextArea("Descrição");
+        descField.setPlaceholder("O que queres fazer?");
+        descField.setWidthFull();
+
+        DatePicker dueDateField = new DatePicker("Due Date");
+
+        Button submitBtn = new Button("Criar Task", event -> {
+            String desc = descField.getValue();
+            var due = dueDateField.getValue();
+            if(desc.isEmpty()) {
+                Notification.show("Descrição é obrigatória", 3000, Notification.Position.BOTTOM_END)
+                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
+                return;
+            }
+            taskService.createTask(desc, due);
+            taskGrid.getDataProvider().refreshAll();
+            Notification.show("Task criada com sucesso", 3000, Notification.Position.BOTTOM_END)
+                    .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+            dialog.close();
+        });
+        submitBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+
+        dialog.add(descField, dueDateField, submitBtn);
+        dialog.open();
     }
 
     @SuppressWarnings("deprecation")
     private Anchor createPdfExportAnchor() {
         Anchor downloadAnchor = new Anchor();
+        @SuppressWarnings("deprecation")
         StreamResource resource = new StreamResource("lista_de_tarefas.pdf", () -> {
             List<Task> allTasks = taskService.findAll();
             try {
@@ -122,7 +146,6 @@ public class TaskListView extends Main {
 
         Button pdfButton = new Button("Exportar para PDF", new Icon(VaadinIcon.FILE_TEXT));
         pdfButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
-
         downloadAnchor.removeAll();
         downloadAnchor.add(pdfButton);
 
