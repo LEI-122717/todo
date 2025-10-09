@@ -26,6 +26,7 @@ import turno5.grupo3.base.ui.component.ViewToolbar;
 import turno5.grupo3.examplefeature.Task;
 import turno5.grupo3.examplefeature.TaskService;
 import turno5.grupo3.examplefeature.service.PdfExportService;
+import turno5.grupo3.service.EmailService;
 
 import java.io.ByteArrayInputStream;
 import java.time.ZoneId;
@@ -33,6 +34,7 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.FormatStyle;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import static com.vaadin.flow.spring.data.VaadinSpringDataHelpers.toSpringPageRequest;
 
@@ -43,33 +45,56 @@ public class TaskListView extends Main {
 
     private final TaskService taskService;
     private final PdfExportService pdfExportService;
+    private final EmailService emailService;
 
     final TextField description;
     final DatePicker dueDate;
     final Button createBtn;
     final Grid<Task> taskGrid;
+    final TextField emailField;
+    final Button sendEmailBtn;
 
-    public TaskListView(TaskService taskService, PdfExportService pdfExportService) {
+    public TaskListView(TaskService taskService, PdfExportService pdfExportService, EmailService emailService) {
         this.taskService = taskService;
         this.pdfExportService = pdfExportService;
+        this.emailService = emailService;
 
+        // Campo de descrição
         description = new TextField();
         description.setPlaceholder("O que queres fazer?");
         description.setAriaLabel("Descrição da task");
         description.setMaxLength(Task.DESCRIPTION_MAX_LENGTH);
         description.setMinWidth("20em");
 
+        // Campo de data
         dueDate = new DatePicker();
         dueDate.setPlaceholder("Due date");
         dueDate.setAriaLabel("Due date");
 
+        // Botão de criação
         createBtn = new Button("Create", event -> openCreateTaskDialog());
         createBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
 
-        var dateTimeFormatter = DateTimeFormatter.ofLocalizedDateTime(FormatStyle.MEDIUM).withZone(ZoneId.systemDefault());
-        var dateFormatter = DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM).withZone(ZoneId.systemDefault());
+        // Campo de email
+        emailField = new TextField();
+        emailField.setPlaceholder("Recipient email");
+        emailField.setMinWidth("20em");
 
-        taskGrid = new Grid<>(Task.class, false);
+        // Botão de envio de email
+        sendEmailBtn = new Button("Send Tasks by Email", event -> sendTasksByEmail());
+        sendEmailBtn.addThemeVariants(ButtonVariant.LUMO_CONTRAST);
+
+        // Formatação de datas
+        var dateTimeFormatter = DateTimeFormatter.ofLocalizedDateTime(FormatStyle.MEDIUM)
+                .withLocale(getLocale())
+                .withZone(ZoneId.systemDefault());
+        var dateFormatter = DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM)
+                .withLocale(getLocale());
+
+        // Grid de tarefas
+        taskGrid = new Grid<>();
+        taskGrid.setItems(query -> taskService.list(toSpringPageRequest(query)).stream());
+
         // Coluna 0: checkbox para done
         taskGrid.addComponentColumn(task -> {
             Checkbox cb = new Checkbox(task.isDone());
@@ -78,12 +103,10 @@ public class TaskListView extends Main {
                 boolean newValue = ev.getValue();
                 try {
                     taskService.setDone(task.getId(), newValue);
-                    // actualiza visualmente a linha — refresh
                     taskGrid.getDataProvider().refreshItem(task);
                     Notification.show("Tarefa " + (newValue ? "concluída" : "reaberta"), 2000, Notification.Position.BOTTOM_END)
                             .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 } catch (Exception ex) {
-                    // Reverte checkbox no cliente se falhar
                     cb.setValue(!newValue);
                     Notification.show("Erro ao atualizar estado: " + ex.getMessage(), 4000, Notification.Position.BOTTOM_END)
                             .addThemeVariants(NotificationVariant.LUMO_ERROR);
@@ -92,7 +115,7 @@ public class TaskListView extends Main {
             return cb;
         }).setHeader("").setAutoWidth(true).setFlexGrow(0);
 
-        // Coluna 1: descrição (com strike-through se done)
+        // Coluna 1: descrição
         taskGrid.addComponentColumn(task -> {
             Span span = new Span(task.getDescription());
             if (task.isDone()) {
@@ -112,27 +135,24 @@ public class TaskListView extends Main {
         taskGrid.addColumn(task -> dateTimeFormatter.format(task.getCreationDate()))
                 .setHeader("Creation Date").setAutoWidth(true).setFlexGrow(2);
 
-        taskGrid.setItems(query -> taskService.list(toSpringPageRequest(query)).stream());
-        taskGrid.setSizeFull();
+        // Clique numa task abre detalhe
+        taskGrid.addItemClickListener(event -> UI.getCurrent().navigate("tarefa/" + event.getItem().getId()));
 
-        // Clique numa task (na row) para abrir detalhe (navega para /tarefa/{id})
-        taskGrid.addItemClickListener(event -> {
-            Task task = event.getItem();
-            UI.getCurrent().navigate("tarefa/" + task.getId());
-        });
-
+        // Layout
         setSizeFull();
-        addClassNames(LumoUtility.BoxSizing.BORDER, LumoUtility.Display.FLEX,
-                LumoUtility.FlexDirection.COLUMN, LumoUtility.Padding.MEDIUM, LumoUtility.Gap.SMALL);
+        addClassNames(LumoUtility.BoxSizing.BORDER,
+                LumoUtility.Display.FLEX,
+                LumoUtility.FlexDirection.COLUMN,
+                LumoUtility.Padding.MEDIUM,
+                LumoUtility.Gap.SMALL);
 
-        // Toolbar com campos de pesquisa/dueDate e botão create
-        add(new ViewToolbar("Task List", ViewToolbar.group(description, dueDate, createBtn),
-                createPdfExportAnchor()
-        ));
+        // Toolbar + email
+        add(new ViewToolbar("Task List", ViewToolbar.group(description, dueDate, createBtn), createPdfExportAnchor()));
+        add(ViewToolbar.group(emailField, sendEmailBtn));
         add(taskGrid);
     }
 
-    // Pop-up para criar task
+    // Pop-up de criação
     private void openCreateTaskDialog() {
         Dialog dialog = new Dialog();
         dialog.setCloseOnEsc(true);
@@ -164,10 +184,10 @@ public class TaskListView extends Main {
         dialog.open();
     }
 
+    // PDF export
     @SuppressWarnings("deprecation")
     private Anchor createPdfExportAnchor() {
         Anchor downloadAnchor = new Anchor();
-        @SuppressWarnings("deprecation")
         StreamResource resource = new StreamResource("lista_de_tarefas.pdf", () -> {
             List<Task> allTasks = taskService.findAll();
             try {
@@ -190,5 +210,29 @@ public class TaskListView extends Main {
         downloadAnchor.add(pdfButton);
 
         return downloadAnchor;
+    }
+
+    // Envio de email
+    private void sendTasksByEmail() {
+        String recipient = emailField.getValue();
+        if (recipient == null || recipient.isEmpty()) {
+            Notification.show("Please enter a valid email address.", 3000, Notification.Position.BOTTOM_END)
+                    .addThemeVariants(NotificationVariant.LUMO_ERROR);
+            return;
+        }
+
+        try {
+            String tasksText = taskService.list(null).stream()
+                    .map(Task::toString)
+                    .collect(Collectors.joining("\n"));
+
+            emailService.sendEmail(recipient, "Your Task List", tasksText);
+
+            Notification.show("Tasks sent to " + recipient, 4000, Notification.Position.BOTTOM_END)
+                    .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+        } catch (Exception e) {
+            Notification.show("Error sending email: " + e.getMessage(), 4000, Notification.Position.BOTTOM_END)
+                    .addThemeVariants(NotificationVariant.LUMO_ERROR);
+        }
     }
 }
