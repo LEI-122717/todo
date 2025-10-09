@@ -1,4 +1,4 @@
-package turno5.grupo3.service;
+package turno5.grupo3.examplefeature.service;
 
 import jakarta.mail.*;
 import jakarta.mail.internet.*;

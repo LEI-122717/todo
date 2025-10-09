@@ -9,7 +9,6 @@ import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.html.Anchor;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.html.Main;
-import com.vaadin.flow.component.html.H3;
 import com.vaadin.flow.component.icon.Icon;
 import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.notification.Notification;
@@ -26,7 +25,7 @@ import turno5.grupo3.base.ui.component.ViewToolbar;
 import turno5.grupo3.examplefeature.Task;
 import turno5.grupo3.examplefeature.TaskService;
 import turno5.grupo3.examplefeature.service.PdfExportService;
-import turno5.grupo3.service.EmailService;
+import turno5.grupo3.examplefeature.service.EmailService;
 
 import java.io.ByteArrayInputStream;
 import java.time.ZoneId;
