@@ -75,12 +75,6 @@
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
         </dependency>
-
-        <!-- Dependência para envio de emails -->
-        <dependency>
-            <groupId>com.sun.mail</groupId>
-            <artifactId>javax.mail</artifactId>
-            <version>1.6.2</version>
         <!-- PDF export -->
         <dependency>
             <groupId>org.apache.pdfbox</groupId>
