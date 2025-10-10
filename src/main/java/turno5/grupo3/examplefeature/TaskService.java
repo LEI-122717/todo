@@ -8,6 +8,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class TaskService {
@@ -17,7 +19,10 @@ public class TaskService {
     TaskService(TaskRepository taskRepository) {
         this.taskRepository = taskRepository;
     }
-
+    @Transactional(readOnly = true)
+    public Optional<Task> findById(Long id) {
+        return taskRepository.findById(id);
+    }
     @Transactional
     public void createTask(String description, @Nullable LocalDate dueDate) {
         if ("fail".equals(description)) {
@@ -28,9 +33,26 @@ public class TaskService {
         taskRepository.saveAndFlush(task);
     }
 
+    @Transactional
+    public void setDone(Long id, boolean done) {
+        Optional<Task> opt = taskRepository.findById(id);
+        if (opt.isPresent()) {
+            Task task = opt.get();
+            task.setDone(done);
+            taskRepository.saveAndFlush(task);
+        } else {
+            throw new IllegalArgumentException("Task not found: " + id);
+        }
+    }
+
     @Transactional(readOnly = true)
     public List<Task> list(Pageable pageable) {
         return taskRepository.findAllBy(pageable).toList();
+    }
+
+    // NOVO MÉTODO: Retorna todas as tarefas
+    public List<Task> findAll() {
+        return taskRepository.findAll();
     }
 
 }
