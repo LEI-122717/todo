@@ -1,0 +1,37 @@
+name: Build JAR
+
+# (a) Disparado em push para a branch principal
+on:
+  push:
+    branches:
+      - main
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      # checkout do repositório
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # (b) configurar Java (ex.: Temurin 21) e cache de Maven
+      - name: Set up Java 21 (Temurin)
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+          cache: 'maven'
+
+      # (c) executar mvn clean package para gerar o .jar
+      - name: Build with Maven
+        run: mvn -B clean package
+
+      # (d) publicar o .jar gerado como artefacto do workflow
+      - name: Upload JAR artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-jar
+          path: target/*.jar
