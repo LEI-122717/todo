@@ -1,6 +1,41 @@
+## Equipa
+**Nome do grupo:** _Bolacha Commit_  
+
+**Membros:**
+- José Jarmela — 122663
+- Nuno Neves — 122666
+- Gonçalo Rua — 122678
+- Beatriz Nunes — 122717
+
 # Todo README
 
-- [ ] TODO Replace or update this README with instructions relevant to your application
+# Task Manager App
+
+Esta aplicação é uma solução para gestão de tarefas com funcionalidades adicionais de produtividade e integração com email. Permite criar, visualizar, enviar e exportar tarefas, bem como gerar QR Codes e fazer conversão de moedas.
+
+---
+
+## Funcionalidades Principais
+
+1. **Gestão de Tasks**
+   - Criar tarefas com descrição e data de vencimento.
+   - Marcar tarefas como concluídas ou reabrir tarefas já concluídas.
+   - Visualizar todas as tarefas num grid interativo.
+
+2. **Envio de Tasks por Email**
+   - Enviar a lista completa de tarefas para um endereço de email.
+   - Notificações visuais de sucesso ou falha no envio.
+
+3. **Geração de PDF**
+   - Exportar todas as tarefas para um PDF com layout organizado.
+   - Download do PDF diretamente pelo browser.
+
+4. **QR Codes das Tarefas**
+   - Gerar QR Codes individuais para cada tarefa (para partilha rápida ou rastreio).
+
+5. **Conversão de Moedas**
+   - Funcionalidade integrada para converter valores entre diferentes moedas (ex: EUR ↔ USD).
+
 
 ## Project Structure
 
