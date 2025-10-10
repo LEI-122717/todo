@@ -7,6 +7,8 @@
 - Gonçalo Rua — 122678
 - Beatriz Nunes — 122717
 
+**9. Link do video:** https://youtu.be/Am4L4uOe0Wc
+
 # Todo README
 
 # Task Manager App
