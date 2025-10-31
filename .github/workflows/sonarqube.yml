@@ -1,0 +1,46 @@
+name: SonarQube on main
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  build-and-analyze:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # melhor para análise de histórico
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          cache: 'maven'
+
+      - name: Build & test (Maven)
+        run: mvn -B -DskipTests=false verify
+
+      # (Opcional) gerar relatório JaCoCo em XML se o teu POM já tiver o plugin configurado
+      # - name: Generate JaCoCo report
+      #   run: mvn -B jacoco:report
+
+      - name: SonarQube Scan
+        uses: sonarsource/sonarqube-scan-action@v2
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          # SONAR_HOST_URL: ${{ vars.SONAR_HOST_URL }} # <- APAGA ESTA LINHA SEGUINDO A NOTA
+          # ou hardcoded (não recomendado): https://sonarqube.example.com
+
+      - name: SonarQube Quality Gate
+        uses: sonarsource/sonarqube-quality-gate-action@v1
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          # SONAR_HOST_URL: ${{ vars.SONAR_HOST_URL }} # <- APAGA ESTA LINHA TAMBÉM
+        with:
+          timeout-minutes: 10
